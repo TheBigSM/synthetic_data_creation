@@ -115,8 +115,13 @@ Each processed article generates:
 
 ### Prerequisites
 - Python 3.8+
-- OpenAI API key (or other LLM provider)
+- LLM API key (OpenAI, Anthropic, or **Llama4**)
 - Jupyter Notebook
+
+### Supported LLM Providers
+- **OpenAI** (GPT-3.5, GPT-4)
+- **Anthropic** (Claude)
+- **Llama4** ⭐ (New!)
 
 ### Quick Start
 ```bash

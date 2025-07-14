@@ -64,14 +64,15 @@ class SyntheticDataPipeline:
         display_fact_schema(self.fact_schema)
         self.logger.info(f"Defined {len(self.fact_schema)} fact types")
     
-    def step3_fact_extraction(self, texts: List[str], max_facts_per_text: int = None) -> List[Dict]:
+    def step3_fact_extraction(self, texts: List[str], max_facts_per_text: int = None, 
+                             llm_provider: str = None) -> List[Dict]:
         """
         Step 3: Extract structured facts from texts using LLM.
         """
         self.logger.info("Step 3: Extracting structured facts...")
         
         if not self.llm_client:
-            self._initialize_llm_client()
+            self._initialize_llm_client(llm_provider)
         
         if not self.fact_schema:
             raise ValueError("Must run step2_fact_characterization first")
@@ -103,14 +104,15 @@ class SyntheticDataPipeline:
         self.logger.info(f"Completed fact extraction for {len(extraction_results)} texts")
         return extraction_results
     
-    def step4_fact_manipulation(self, extraction_results: List[Dict]) -> List[SyntheticDataResult]:
+    def step4_fact_manipulation(self, extraction_results: List[Dict], 
+                               llm_provider: str = None) -> List[SyntheticDataResult]:
         """
         Step 4: Modify facts and generate synthetic articles.
         """
         self.logger.info("Step 4: Modifying facts and generating synthetic articles...")
         
         if not self.llm_client:
-            self._initialize_llm_client()
+            self._initialize_llm_client(llm_provider)
         
         synthetic_results = []
         
@@ -153,9 +155,17 @@ class SyntheticDataPipeline:
         return synthetic_results
     
     def run_full_pipeline(self, data_path: str, content_type: str = "news", 
-                         max_articles: int = None, max_facts_per_article: int = None) -> List[SyntheticDataResult]:
+                         max_articles: int = None, max_facts_per_article: int = None,
+                         llm_provider: str = None) -> List[SyntheticDataResult]:
         """
         Run the complete 4-step pipeline.
+        
+        Args:
+            data_path: Path to input data file
+            content_type: Type of content ("news" or "tweets")
+            max_articles: Maximum number of articles to process
+            max_facts_per_article: Maximum facts to extract per article
+            llm_provider: LLM provider to use ("openai", "anthropic", "llama4")
         """
         self.logger.info("Starting full synthetic data generation pipeline...")
         
@@ -184,10 +194,10 @@ class SyntheticDataPipeline:
         self.step2_fact_characterization(content_type)
         
         # Step 3: Fact extraction
-        extraction_results = self.step3_fact_extraction(texts, max_facts_per_article)
+        extraction_results = self.step3_fact_extraction(texts, max_facts_per_article, llm_provider)
         
         # Step 4: Fact manipulation
-        synthetic_results = self.step4_fact_manipulation(extraction_results)
+        synthetic_results = self.step4_fact_manipulation(extraction_results, llm_provider)
         
         self.logger.info("Pipeline completed successfully!")
         return synthetic_results
@@ -274,23 +284,45 @@ class SyntheticDataPipeline:
         self.evaluation_manager.create_annotation_template(eval_data, output_file)
         return output_file
     
-    def _initialize_llm_client(self):
+    def _initialize_llm_client(self, provider: str = None):
         """Initialize LLM client based on configuration."""
         llm_config = self.config.get('llm', {})
-        provider = 'openai'  # Default to OpenAI
         
-        if provider in llm_config:
-            self.llm_client = create_llm_client(
-                provider=provider,
-                model_name=llm_config[provider]['model'],
-                temperature=llm_config[provider]['temperature'],
-                max_tokens=llm_config[provider]['max_tokens']
-            )
-            self.logger.info(f"Initialized {provider} client")
+        # Use provided provider or default to first available
+        if provider:
+            selected_provider = provider
         else:
-            raise ValueError(f"No configuration found for {provider}")
+            # Default priority: llama4, openai, anthropic
+            for prov in ['llama4', 'openai', 'anthropic']:
+                if prov in llm_config:
+                    selected_provider = prov
+                    break
+            else:
+                selected_provider = 'openai'  # Final fallback
+        
+        if selected_provider in llm_config:
+            config_params = llm_config[selected_provider].copy()
+            
+            # Handle Llama4 specific parameters
+            if selected_provider == 'llama4':
+                base_url = config_params.pop('base_url', None)
+                self.llm_client = create_llm_client(
+                    provider=selected_provider,
+                    base_url=base_url,
+                    **config_params
+                )
+            else:
+                self.llm_client = create_llm_client(
+                    provider=selected_provider,
+                    **config_params
+                )
+            
+            self.logger.info(f"Initialized {selected_provider} client with model {config_params.get('model_name', config_params.get('model'))}")
+        else:
+            raise ValueError(f"No configuration found for {selected_provider}. Available: {list(llm_config.keys())}")
 
-def run_demo_pipeline(num_articles: int = 10, content_type: str = "news"):
+def run_demo_pipeline(num_articles: int = 10, content_type: str = "news", 
+                     llm_provider: str = None):
     """Run a demonstration of the pipeline with sample data."""
     
     # Create sample data
@@ -314,7 +346,8 @@ def run_demo_pipeline(num_articles: int = 10, content_type: str = "news"):
     results = pipeline.run_full_pipeline(
         data_path=sample_file,
         content_type=content_type,
-        max_articles=num_articles
+        max_articles=num_articles,
+        llm_provider=llm_provider
     )
     
     # Save results

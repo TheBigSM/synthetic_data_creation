@@ -13,8 +13,13 @@ pip install -r requirements.txt
 
 # Setup environment variables
 cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Edit .env and add your LLM API key (OpenAI, Anthropic, or Llama4)
 ```
+
+### Supported LLM Providers
+- **OpenAI**: Add `OPENAI_API_KEY=your_key_here` to .env
+- **Anthropic**: Add `ANTHROPIC_API_KEY=your_key_here` to .env  
+- **Llama4** ⭐: Add `LLAMA4_API_KEY=your_key_here` and `LLAMA4_BASE_URL=your_endpoint` to .env
 
 ### 2. Run the 4-Step Methodology
 
@@ -78,11 +83,16 @@ Each processed article generates JSON with:
 
 ### 7. Troubleshooting
 
-**No API Key**: Add `OPENAI_API_KEY=your_key_here` to `.env` file
+**No API Key**: Add your LLM API key to `.env` file:
+- OpenAI: `OPENAI_API_KEY=your_key_here`
+- Anthropic: `ANTHROPIC_API_KEY=your_key_here`  
+- Llama4: `LLAMA4_API_KEY=your_key_here` and `LLAMA4_BASE_URL=your_endpoint`
 
 **Import Errors**: Make sure you're running from the project root directory
 
 **No Facts Extracted**: Check your input data format and LLM model settings
+
+**Llama4 Connection Issues**: Verify your `LLAMA4_BASE_URL` endpoint is correct
 
 ---
 
