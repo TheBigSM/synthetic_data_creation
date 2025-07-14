@@ -158,7 +158,4 @@ jupyter notebook notebooks/data_generation/03_structured_methodology.ipynb
 - Cross-dataset generalization performance
 
 ## Contributors
-- [Your Name]
-
-## License
-[License information]
+- Mateja Smiljanić
