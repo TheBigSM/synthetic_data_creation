@@ -24,10 +24,11 @@ python check_setup.py
 nano .env  # or use your preferred editor
 ```
 
-### Supported LLM Providers
-- **OpenAI**: Add `OPENAI_API_KEY=your_key_here` to .env
-- **Anthropic**: Add `ANTHROPIC_API_KEY=your_key_here` to .env  
-- **Llama4** ⭐: Add `LLAMA4_API_KEY=your_key_here` and `LLAMA4_BASE_URL=your_endpoint` to .env
+### Supported LLM Providers (Updated July 2025 Pricing)
+- **Groq Llama4** ⭐: Add `LLAMA4_API_KEY=your_key_here` (~$0.40/1000 articles)
+- **OpenAI GPT-4.1-nano** ⭐: Add `OPENAI_API_KEY=your_key_here` (~$0.44/1000 articles) 
+- **OpenAI GPT-4o-mini**: Add `OPENAI_API_KEY=your_key_here` (~$0.66/1000 articles)
+- **Anthropic Claude Haiku**: Add `ANTHROPIC_API_KEY=your_key_here` (~$4.16/1000 articles)
 
 ### 2. Run the 4-Step Methodology
 
