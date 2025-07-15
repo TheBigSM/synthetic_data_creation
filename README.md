@@ -125,14 +125,24 @@ Each processed article generates:
 
 ### Quick Start
 ```bash
+# Create virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Set up environment
-cp .env.example .env
-# Add your API keys to .env
+# Verify setup
+python check_setup.py
 
-# Run structured methodology notebook
+# Add your API keys to .env file (already created)
+# Edit .env and add your LLM API key
+
+# Run quick demo
+python quick_start.py
+
+# Or run structured methodology notebook
 jupyter notebook notebooks/data_generation/03_structured_methodology.ipynb
 ```
 

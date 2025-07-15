@@ -16,7 +16,7 @@ from tqdm import tqdm
 from src.data_generation.llm_client import create_llm_client, SyntheticDataResult
 from src.data_generation.fact_schemas import get_fact_schema, display_fact_schema
 from src.utils.evaluation import EvaluationManager
-from src.utils.data_utils import load_config, save_processed_data
+from src.utils.data_utils import load_config, save_processed_data, ensure_dir_exists
 
 class SyntheticDataPipeline:
     """
@@ -207,6 +207,9 @@ class SyntheticDataPipeline:
         if not self.results:
             raise ValueError("No results to save. Run pipeline first.")
         
+        # Ensure output directory exists
+        ensure_dir_exists(output_dir)
+        
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         if output_format.lower() == "json":
@@ -267,9 +270,12 @@ class SyntheticDataPipeline:
         if not self.results:
             raise ValueError("No results to evaluate. Run pipeline first.")
         
+        # Ensure results directory exists
+        ensure_dir_exists("results/evaluation_metrics")
+        
         if not output_file:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = f"evaluation_template_{timestamp}.csv"
+            output_file = f"results/evaluation_metrics/evaluation_template_{timestamp}.csv"
         
         # Convert results to evaluation format
         eval_data = []

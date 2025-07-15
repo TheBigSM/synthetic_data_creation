@@ -8,12 +8,20 @@
 git clone https://github.com/TheBigSM/synthetic_data_creation.git
 cd synthetic_data_creation
 
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
+pip install --upgrade pip
 pip install -r requirements.txt
 
+# Verify setup
+python check_setup.py
+
 # Setup environment variables
-cp .env.example .env
-# Edit .env and add your LLM API key (OpenAI, Anthropic, or Llama4)
+# The .env file already exists - just add your API keys
+nano .env  # or use your preferred editor
 ```
 
 ### Supported LLM Providers
