@@ -427,11 +427,14 @@ class Llama4Client(LLMClient):
 
 def create_llm_client(provider: str = "openai", **kwargs) -> LLMClient:
     """Factory function to create LLM clients."""
-    if provider.lower() == "openai":
+    provider_lower = provider.lower()
+    
+    # Handle new provider naming scheme
+    if provider_lower in ["openai", "openai_nano", "openai_mini", "openai_standard", "openai_premium"]:
         return OpenAIClient(**kwargs)
-    elif provider.lower() == "anthropic":
+    elif provider_lower in ["anthropic", "anthropic_haiku", "anthropic_sonnet"]:
         return AnthropicClient(**kwargs)
-    elif provider.lower() == "llama4":
+    elif provider_lower in ["llama4", "groq_llama4", "fireworks_llama4"]:
         return Llama4Client(**kwargs)
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+        raise ValueError(f"Unsupported LLM provider: {provider}. Supported: openai variants, anthropic variants, llama4 variants")
