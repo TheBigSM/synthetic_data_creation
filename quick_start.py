@@ -24,11 +24,11 @@ def main():
     for key in api_keys:
         if os.getenv(key):
             if key == "TOGETHER_API_KEY":
-                provider_name = "together"
+                provider_name = "together_llama4_maverick"  # Use Maverick model
             else:
                 provider_name = key.replace("_API_KEY", "").lower()
             configured_provider = provider_name
-            print(f"✅ Found {provider_name} API key")
+            print(f"✅ Found {key.replace('_API_KEY', '')} API key")
             break
     
     if not configured_provider:
