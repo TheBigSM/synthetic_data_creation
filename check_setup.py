@@ -20,7 +20,7 @@ def main():
         'numpy': 'Numerical computing', 
         'openai': 'OpenAI API client',
         'requests': 'HTTP requests',
-        'dotenv': 'Environment variables',
+        'python-dotenv': 'Environment variables',
         'yaml': 'Configuration files',
         'tqdm': 'Progress bars'
     }
@@ -28,8 +28,8 @@ def main():
     missing_packages = []
     for package, description in required_packages.items():
         try:
-            if package == 'dotenv':
-                import dotenv
+            if package == 'python-dotenv':
+                from dotenv import load_dotenv
             elif package == 'yaml':
                 import yaml
             else:
