@@ -18,12 +18,15 @@ def main():
     load_dotenv()
     
     # Check if any API key is configured
-    api_keys = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLAMA4_API_KEY"]
+    api_keys = ["OPENAI_API_KEY", "TOGETHER_API_KEY"]
     configured_provider = None
     
     for key in api_keys:
         if os.getenv(key):
-            provider_name = key.replace("_API_KEY", "").lower()
+            if key == "TOGETHER_API_KEY":
+                provider_name = "together"
+            else:
+                provider_name = key.replace("_API_KEY", "").lower()
             configured_provider = provider_name
             print(f"✅ Found {provider_name} API key")
             break
@@ -32,8 +35,7 @@ def main():
         print("❌ No API keys configured!")
         print("\nPlease add at least one API key to your .env file:")
         print("OPENAI_API_KEY=your_openai_key_here")
-        print("ANTHROPIC_API_KEY=your_anthropic_key_here") 
-        print("LLAMA4_API_KEY=your_llama4_key_here")
+        print("TOGETHER_API_KEY=your_together_key_here")
         return
     
     # Import after environment check

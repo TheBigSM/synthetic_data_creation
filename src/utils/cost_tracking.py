@@ -31,16 +31,12 @@ class CostTracker:
             "gpt-4o-mini": {"input": 0.15, "output": 0.60},
             "gpt-4.5-preview": {"input": 75.00, "output": 150.00}
         },
-        "anthropic": {
-            "claude-3-5-haiku": {"input": 0.80, "output": 4.00},
-            "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.00},
-            "claude-3-sonnet": {"input": 3.00, "output": 15.00},
-            "claude-3-opus": {"input": 15.00, "output": 75.00}
-        },
-        "llama4": {
-            "llama-4-scout": {"input": 0.11, "output": 0.34},  # Groq
-            "llama-4-maverick": {"input": 0.27, "output": 0.85},  # Fireworks
-            "llama-4-70b": {"input": 0.50, "output": 1.50}  # Generic estimate
+        "together": {
+            "meta-llama/Llama-2-7b-chat-hf": {"input": 0.20, "output": 0.20},
+            "meta-llama/Llama-2-13b-chat-hf": {"input": 0.30, "output": 0.30},
+            "meta-llama/Llama-2-70b-chat-hf": {"input": 0.90, "output": 0.90},
+            "meta-llama/Meta-Llama-3-8B-Instruct": {"input": 0.20, "output": 0.20},
+            "meta-llama/Meta-Llama-3-70B-Instruct": {"input": 0.90, "output": 0.90}
         }
     }
     
@@ -100,21 +96,17 @@ class CostTracker:
         elif "gpt-4.5" in model_lower:
             return "gpt-4.5-preview"
         
-        # Anthropic model mapping
-        elif "claude-3-5-haiku" in model_lower or "claude-3.5-haiku" in model_lower:
-            return "claude-3-5-haiku"
-        elif "claude-3-sonnet" in model_lower:
-            return "claude-3-sonnet"
-        elif "claude-3-opus" in model_lower:
-            return "claude-3-opus"
-        
-        # Llama4 model mapping
-        elif "scout" in model_lower:
-            return "llama-4-scout"
-        elif "maverick" in model_lower:
-            return "llama-4-maverick"
-        elif "llama-4" in model_lower or "llama4" in model_lower:
-            return "llama-4-70b"
+        # Together.ai Llama model mapping
+        elif "meta-llama/llama-2-7b" in model_lower:
+            return "meta-llama/Llama-2-7b-chat-hf"
+        elif "meta-llama/llama-2-13b" in model_lower:
+            return "meta-llama/Llama-2-13b-chat-hf"
+        elif "meta-llama/llama-2-70b" in model_lower:
+            return "meta-llama/Llama-2-70b-chat-hf"
+        elif "meta-llama/meta-llama-3-8b" in model_lower:
+            return "meta-llama/Meta-Llama-3-8B-Instruct"
+        elif "meta-llama/meta-llama-3-70b" in model_lower:
+            return "meta-llama/Meta-Llama-3-70B-Instruct"
         
         # Return original if no match
         return model
@@ -212,10 +204,10 @@ if __name__ == "__main__":
     
     test_scales = [10, 100, 1000]
     test_providers = [
-        ("llama4", "llama-4-scout"),  # Groq - cheapest
+        ("together", "meta-llama/Meta-Llama-3-8B-Instruct"),  # Together.ai - cheapest
         ("openai", "gpt-4.1-nano"),   # OpenAI nano
         ("openai", "gpt-4o-mini"),    # OpenAI mini
-        ("anthropic", "claude-3-5-haiku")  # Anthropic
+        ("together", "meta-llama/Meta-Llama-3-70B-Instruct")  # Together.ai larger model
     ]
     
     for num_articles in test_scales:

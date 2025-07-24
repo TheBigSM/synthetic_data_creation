@@ -165,7 +165,7 @@ class SyntheticDataPipeline:
             content_type: Type of content ("news" or "tweets")
             max_articles: Maximum number of articles to process
             max_facts_per_article: Maximum facts to extract per article
-            llm_provider: LLM provider to use ("openai", "anthropic", "llama4")
+            llm_provider: LLM provider to use ("openai", "together")
         """
         self.logger.info("Starting full synthetic data generation pipeline...")
         
@@ -294,36 +294,57 @@ class SyntheticDataPipeline:
         """Initialize LLM client based on configuration."""
         llm_config = self.config.get('llm', {})
         
-        # Use provided provider or default to first available
-        if provider:
+        # Use provided provider, default from config, or fallback priority
+        if provider and provider in llm_config:
             selected_provider = provider
-        else:
-            # Default priority: llama4, openai, anthropic
-            for prov in ['llama4', 'openai', 'anthropic']:
-                if prov in llm_config:
-                    selected_provider = prov
-                    break
+        elif provider is None:
+            # Use default from config file
+            default_provider = self.config.get('default_llm_provider', 'together_llama4_maverick')
+            if default_provider in llm_config:
+                selected_provider = default_provider
             else:
-                selected_provider = 'openai'  # Final fallback
+                # Fallback to first available provider
+                available_providers = list(llm_config.keys())
+                if available_providers:
+                    selected_provider = available_providers[0]
+                else:
+                    raise ValueError("No LLM providers configured")
+        else:
+            # Check if provider is a general type that matches specific configs
+            matching_providers = [key for key in llm_config.keys() if provider.lower() in key.lower()]
+            if matching_providers:
+                selected_provider = matching_providers[0]  # Use first match
+            else:
+                raise ValueError(f"No configuration found for {provider}. Available: {list(llm_config.keys())}")
         
         if selected_provider in llm_config:
             config_params = llm_config[selected_provider].copy()
             
-            # Handle Llama4 specific parameters
-            if selected_provider == 'llama4':
-                base_url = config_params.pop('base_url', None)
-                self.llm_client = create_llm_client(
-                    provider=selected_provider,
-                    base_url=base_url,
-                    **config_params
-                )
-            else:
-                self.llm_client = create_llm_client(
-                    provider=selected_provider,
-                    **config_params
-                )
+            # Map config parameters to client constructor parameters
+            if 'model' in config_params and 'model_name' not in config_params:
+                config_params['model_name'] = config_params.pop('model')
             
-            self.logger.info(f"Initialized {selected_provider} client with model {config_params.get('model_name', config_params.get('model'))}")
+            # Filter out parameters that aren't used by client constructors
+            client_params = {}
+            allowed_params = ['model_name', 'temperature', 'max_tokens', 'api_key']
+            for key, value in config_params.items():
+                if key in allowed_params:
+                    client_params[key] = value
+            
+            # Determine actual provider type for client factory
+            if any(x in selected_provider.lower() for x in ['together', 'llama']):
+                client_provider = "together"
+            elif any(x in selected_provider.lower() for x in ['openai', 'gpt']):
+                client_provider = "openai"
+            else:
+                client_provider = selected_provider
+                
+            self.llm_client = create_llm_client(
+                provider=client_provider,
+                **client_params
+            )
+            
+            self.logger.info(f"Initialized {selected_provider} client with model {client_params.get('model_name')}")
         else:
             raise ValueError(f"No configuration found for {selected_provider}. Available: {list(llm_config.keys())}")
 

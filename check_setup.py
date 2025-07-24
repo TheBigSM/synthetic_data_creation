@@ -19,7 +19,6 @@ def main():
         'pandas': 'Data manipulation',
         'numpy': 'Numerical computing', 
         'openai': 'OpenAI API client',
-        'anthropic': 'Anthropic API client',
         'requests': 'HTTP requests',
         'dotenv': 'Environment variables',
         'yaml': 'Configuration files',
@@ -70,8 +69,7 @@ def main():
             
             api_keys = {
                 "OPENAI_API_KEY": "OpenAI",
-                "ANTHROPIC_API_KEY": "Anthropic", 
-                "LLAMA4_API_KEY": "Llama4"
+                "TOGETHER_API_KEY": "Together.ai"
             }
             
             configured = []
@@ -123,7 +121,8 @@ def main():
     print("\n🚀 Ready to generate synthetic COVID data!")
     print("\nNext steps:")
     print("1. Add your API keys to .env file (if not done)")
-    print("2. Run: python quick_start.py")
+    print("2. Run: jupyter notebook notebooks/data_generation/04_batch_processing.ipynb")
+    print("3. Alternative: python quick_start.py  # For simple testing")
     print("3. Or open: notebooks/data_generation/03_structured_methodology.ipynb")
     
     return True

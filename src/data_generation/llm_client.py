@@ -3,7 +3,6 @@ LLM client utilities for synthetic data generation.
 """
 
 import openai
-import anthropic
 import os
 import requests
 from typing import List, Dict, Any, Optional
@@ -11,6 +10,40 @@ import logging
 from dataclasses import dataclass
 import time
 import json
+
+try:
+    from together import Together
+    TOGETHER_AVAILABLE = True
+except ImportError:
+    TOGETHER_AVAILABLE = False
+
+def clean_json_response(response_text: str) -> str:
+    """Clean JSON response by removing markdown code blocks and handling truncated JSON."""
+    # Remove markdown code blocks
+    if "```json" in response_text:
+        start = response_text.find("```json") + 7
+        end = response_text.find("```", start)
+        if end != -1:
+            response_text = response_text[start:end].strip()
+    elif "```" in response_text:
+        start = response_text.find("```") + 3  
+        end = response_text.find("```", start)
+        if end != -1:
+            response_text = response_text[start:end].strip()
+    
+    cleaned = response_text.strip()
+    
+    # Handle truncated JSON by trying to fix common issues
+    if cleaned and not cleaned.endswith(']'):
+        # Try to find the last complete object
+        last_complete_brace = cleaned.rfind('}')
+        if last_complete_brace != -1:
+            # Check if we can add a closing bracket
+            truncated_part = cleaned[last_complete_brace + 1:].strip()
+            if not truncated_part or truncated_part.startswith(','):
+                cleaned = cleaned[:last_complete_brace + 1] + ']'
+    
+    return cleaned
 
 @dataclass
 class FactExtractionResult:
@@ -151,7 +184,9 @@ class OpenAIClient(LLMClient):
             modified_text = response.choices[0].message.content.strip()
             
             try:
-                modified_facts = json.loads(modified_text)
+                # Clean markdown code blocks if present
+                clean_text = clean_json_response(modified_text)
+                modified_facts = json.loads(clean_text)
                 if not isinstance(modified_facts, list):
                     modified_facts = extracted_facts
             except json.JSONDecodeError:
@@ -204,43 +239,32 @@ class OpenAIClient(LLMClient):
             self.logger.error(f"Error generating synthetic article: {e}")
             return original_text
 
-class AnthropicClient(LLMClient):
-    """Anthropic Claude API client."""
+class TogetherAIClient(LLMClient):
+    """Together.ai API client implementing structured fact methodology."""
     
     def __init__(self, api_key: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
-    
-    def extract_facts(self, text: str, num_facts: int = 3) -> FactExtractionResult:
-        """Extract key facts using Claude."""
-        # Similar implementation to OpenAI but using Anthropic's API
-        # Implementation would go here
-        pass
-    
-    def generate_synthetic_text(self, original_text: str, modified_facts: List[str]) -> str:
-        """Generate synthetic text using Claude."""
-        # Implementation would go here
-        pass
-
-class Llama4Client(LLMClient):
-    """Llama4 API client implementing structured fact methodology."""
-    
-    def __init__(self, api_key: str = None, base_url: str = None, **kwargs):
-        super().__init__(**kwargs)
-        self.api_key = api_key or os.getenv("LLAMA4_API_KEY")
-        self.base_url = base_url or os.getenv("LLAMA4_BASE_URL", "https://api.llama4.ai/v1")
+        self.api_key = api_key or os.getenv("TOGETHER_API_KEY")
         
-        # If using OpenAI-compatible API, we can use OpenAI client
-        if self.base_url and self.api_key:
-            self.client = openai.OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
-            )
+        if not TOGETHER_AVAILABLE:
+            # Fallback to OpenAI-compatible client
+            self.base_url = "https://api.together.xyz/v1"
+            if self.api_key:
+                self.client = openai.OpenAI(
+                    api_key=self.api_key,
+                    base_url=self.base_url
+                )
+            else:
+                self.client = None
         else:
-            self.client = None
+            # Use native Together client
+            if self.api_key:
+                self.client = Together(api_key=self.api_key)
+            else:
+                self.client = None
     
     def extract_structured_facts(self, text: str, fact_schema: List[Dict], max_facts: int = None) -> FactExtractionResult:
-        """Extract structured facts using COVID-specific schema with Llama4."""
+        """Extract structured facts using COVID-specific schema with Together.ai."""
         
         # Create schema description for prompt
         schema_desc = ""
@@ -274,22 +298,22 @@ class Llama4Client(LLMClient):
         """
         
         try:
-            if self.client:
-                # Use OpenAI-compatible API
-                response = self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens
-                )
-                facts_text = response.choices[0].message.content.strip()
-            else:
-                # Direct HTTP API call
-                facts_text = self._make_direct_api_call(prompt)
+            if not self.client:
+                raise ValueError("Together.ai API key not configured")
+                
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+            facts_text = response.choices[0].message.content.strip()
             
             # Parse JSON response
             try:
-                facts_json = json.loads(facts_text)
+                # Clean markdown code blocks if present
+                clean_text = clean_json_response(facts_text)
+                facts_json = json.loads(clean_text)
                 if not isinstance(facts_json, list):
                     facts_json = []
             except json.JSONDecodeError:
@@ -306,7 +330,7 @@ class Llama4Client(LLMClient):
             )
             
         except Exception as e:
-            self.logger.error(f"Error extracting structured facts with Llama4: {e}")
+            self.logger.error(f"Error extracting structured facts with Together.ai: {e}")
             return FactExtractionResult(original_text=text, extracted_facts=[])
     
     def modify_facts(self, extracted_facts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -328,19 +352,21 @@ class Llama4Client(LLMClient):
         """
         
         try:
-            if self.client:
-                response = self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens
-                )
-                modified_text = response.choices[0].message.content.strip()
-            else:
-                modified_text = self._make_direct_api_call(prompt)
+            if not self.client:
+                raise ValueError("Together.ai API key not configured")
+                
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+            modified_text = response.choices[0].message.content.strip()
             
             try:
-                modified_facts = json.loads(modified_text)
+                # Clean markdown code blocks if present
+                clean_text = clean_json_response(modified_text)
+                modified_facts = json.loads(clean_text)
                 if not isinstance(modified_facts, list):
                     modified_facts = extracted_facts
             except json.JSONDecodeError:
@@ -350,7 +376,7 @@ class Llama4Client(LLMClient):
             return modified_facts
             
         except Exception as e:
-            self.logger.error(f"Error modifying facts with Llama4: {e}")
+            self.logger.error(f"Error modifying facts with Together.ai: {e}")
             return extracted_facts
     
     def generate_synthetic_article(self, original_text: str, modified_facts: List[Dict]) -> str:
@@ -380,61 +406,29 @@ class Llama4Client(LLMClient):
         """
         
         try:
-            if self.client:
-                response = self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens
-                )
-                return response.choices[0].message.content.strip()
-            else:
-                return self._make_direct_api_call(prompt)
+            if not self.client:
+                raise ValueError("Together.ai API key not configured")
+                
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
+            )
+            return response.choices[0].message.content.strip()
             
         except Exception as e:
-            self.logger.error(f"Error generating synthetic article with Llama4: {e}")
+            self.logger.error(f"Error generating synthetic article with Together.ai: {e}")
             return original_text
     
-    def _make_direct_api_call(self, prompt: str) -> str:
-        """Make direct HTTP API call for non-OpenAI compatible endpoints."""
-        if not self.base_url or not self.api_key:
-            raise ValueError("Llama4 API URL and key must be configured")
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature
-        }
-        
-        response = requests.post(
-            f"{self.base_url}/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result.get("choices", [{}])[0].get("text", "")
-        else:
-            raise Exception(f"Llama4 API error: {response.status_code} - {response.text}")
-
-def create_llm_client(provider: str = "openai", **kwargs) -> LLMClient:
+def create_llm_client(provider: str = "together", **kwargs) -> LLMClient:
     """Factory function to create LLM clients."""
     provider_lower = provider.lower()
     
-    # Handle new provider naming scheme
+    # Handle provider naming scheme
     if provider_lower in ["openai", "openai_nano", "openai_mini", "openai_standard", "openai_premium"]:
         return OpenAIClient(**kwargs)
-    elif provider_lower in ["anthropic", "anthropic_haiku", "anthropic_sonnet"]:
-        return AnthropicClient(**kwargs)
-    elif provider_lower in ["llama4", "groq_llama4", "fireworks_llama4"]:
-        return Llama4Client(**kwargs)
+    elif provider_lower in ["together", "togetherai", "together_ai", "llama", "llama4"]:
+        return TogetherAIClient(**kwargs)
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}. Supported: openai variants, anthropic variants, llama4 variants")
+        raise ValueError(f"Unsupported LLM provider: {provider}. Supported: openai variants, together variants")
